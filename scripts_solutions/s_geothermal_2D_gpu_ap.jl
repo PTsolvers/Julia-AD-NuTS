@@ -59,7 +59,7 @@ Main script
     ## init visu
     iters_evo = Float64[]; errs_evo = Float64[]
     qM, qx_c, qz_c = zeros(nx, nz), zeros(nx, nz), zeros(nx, nz)
-    fig = Figure(resolution=(2500, 1200), fontsize=32)
+    fig = Figure(size=(2500, 1200), fontsize=32)
     ax = ( Pf  = Axis(fig[1, 1][1, 1]; aspect=DataAspect(), title="Pf"),
            K   = Axis(fig[1, 2][1, 1]; aspect=DataAspect(), title="log10(K)"),
            qM  = Axis(fig[2, 1][1, 1]; aspect=DataAspect(), title="|q|"),
