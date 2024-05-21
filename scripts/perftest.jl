@@ -12,6 +12,7 @@ FD derivatives macros
 """
 macro d2_xi(A) esc(:(($A[ix+2, iy+1] - $A[ix+1, iy+1]) - ($A[ix+1, iy+1] - $A[ix, iy+1]))) end
 macro d2_yi(A) esc(:(($A[ix+1, iy+2] - $A[ix+1, iy+1]) - ($A[ix+1, iy+1] - $A[ix+1, iy]))) end
+macro all(A)  esc(:($A[ix, iy])) end
 macro inn(A)  esc(:($A[ix+1, iy+1])) end
 
 md"""
@@ -59,8 +60,8 @@ function perftest()
         CUDA.@sync @cuda threads=$nthreads blocks=$nblocks diffusion_step!($C2, $C, $D, $dt, $_dx, $_dy)
     end
     T_eff = (2 * 1 + 1) / 1e9 * nx * ny * sizeof(Float64) / t_it
-    println("T_eff = $(T_eff) GiB/s using CUDA.jl on a Nvidia Tesla A100 GPU")
-    println("So that's cool. We are getting close to hardware limit, running at $(T_eff/T_peak*100), sigdigits=4) % of memory copy! 🚀")
+    println("T_eff = $(round(T_eff, sigdigits=6)) GiB/s using CUDA.jl on a Nvidia Tesla A100 GPU")
+    println("So that's cool. We are getting close to hardware limit, running at $(round(T_eff/T_peak*100, sigdigits=4)) % of memory copy! 🚀")
     return
 end
 
