@@ -1,8 +1,17 @@
+using Markdown
+md"""
+# Geothermal 2D on GPUs using kernel programming and AD for inversion
+
+Load modules
+"""
 using Printf, LinearAlgebra
 using CairoMakie
 using CUDA
 using Enzyme
 
+md"""
+Averaging and local maximum macros and support functions
+"""
 macro d_xa(A) esc(:($A[ix+1, iz] - $A[ix, iz])) end
 macro d_za(A) esc(:($A[ix, iz+1] - $A[ix, iz])) end
 macro avx(A)  esc(:(0.5 * ($A[ix, iz] + $A[ix+1, iz]))) end
@@ -29,7 +38,9 @@ function smooth!(A2, A, nthread, nblock; nsm=1)
     return
 end
 
-# forward
+md"""
+Forward kernels
+"""
 function residual_fluxes!()
     #= ??? =#
     return
@@ -50,18 +61,24 @@ function update_pressure!()
     return
 end
 
-@inline ∇(fun,args...) = (Enzyme.autodiff_deferred(Enzyme.Reverse, fun, args...); return)
+md"""
+Generic autodiff call
+"""
+@inline ∇(fun, args...) = (Enzyme.autodiff_deferred(Enzyme.Reverse, fun, args...); return)
 const DupNN = DuplicatedNoNeed
 
+md"""
+Forward solver
+"""
 @views function forward_solve!(logK, fields, scalars, iter_params; visu=nothing)
     (;Pf, qx, qz, Qf, RPf, Rqx, Rqz, K)               = fields
     (;nx, nz, dx, dz, nthread, nblock)                = scalars
     (;cfl, re, vdτ, lz, ϵtol, maxiter, ncheck, K_max) = iter_params
     isnothing(visu) || ((;qx_c, qz_c, qM, fig, plt, st) = visu)
     K .= exp.(logK)
-    # approximate diagonal (Jacobi) preconditioner
+    ## approximate diagonal (Jacobi) preconditioner
     K_max .= K; K_max[2:end-1, 2:end-1] .= maxloc(K); K_max[:, [1, end]] .= K_max[:, [2, end-1]]
-    # iterative loop
+    ## iterative loop
     iters_evo = Float64[]; errs_evo = Float64[]
     err = 2ϵtol; iter = 1
     while err >= ϵtol && iter <= maxiter
@@ -90,15 +107,18 @@ const DupNN = DuplicatedNoNeed
     return
 end
 
+md"""
+Adjoint solver
+"""
 @views function adjoint_solve!(logK, fwd_params, adj_params, loss_params)
-    # unpack forward
+    ## unpack forward
     (;Pf, qx, qz, Qf, RPf, Rqx, Rqz, K) = fwd_params.fields
     (;nx, nz, dx, dz, nthread, nblock)  = fwd_params.scalars
-    # unpack adjoint
+    ## unpack adjoint
     (;P̄f, q̄x, q̄z, R̄Pf, R̄qx, R̄qz, Ψ_qx, Ψ_qz, Ψ_Pf)      = adj_params.fields
     (;∂J_∂Pf)                                           = loss_params.fields
     (;cfl, re_a, vdτ, lz, ϵtol, maxiter, ncheck, K_max) = adj_params.iter_params
-    # iterative loop
+    ## iterative loop
     iters_evo = Float64[]; errs_evo = Float64[]
     err = 2ϵtol; iter = 1
     while err >= ϵtol && iter <= maxiter
@@ -123,6 +143,9 @@ end
     return
 end
 
+md"""
+Loss function
+"""
 @views function loss(logK, fwd_params, loss_params; kwargs...)
     (;Pf_obs)       = loss_params.fields
     (;ixobs, izobs) = loss_params.scalars
@@ -132,8 +155,11 @@ end
     return 0.5*sum((Pf[ixobs, izobs] .- Pf_obs).^2)
 end
 
+md"""
+Gradient of the loss function
+"""
 function ∇loss!(logK̄, logK, fwd_params, adj_params, loss_params; reg=nothing, kwargs...)
-    # unpack
+    ## unpack
     (;R̄qx, R̄qz, Ψ_qx, Ψ_qz)    = adj_params.fields
     (;Pf, qx, qz, Rqx, Rqz, K) = fwd_params.fields
     (;dx, dz, nthread, nblock) = fwd_params.scalars
@@ -141,16 +167,16 @@ function ∇loss!(logK̄, logK, fwd_params, adj_params, loss_params; reg=nothing
     (;ixobs, izobs)            = loss_params.scalars
     @info "Forward solve"
     #= ??? =#
-    # set tangent
+    ## set tangent
     ∂J_∂Pf[ixobs, izobs] .= #= ??? =#
     @info "Adjoint solve"
     #= ??? =#
-    # evaluate gradient dJ_dK
+    ## evaluate gradient dJ_dK
     R̄qx .= .-Ψ_qx
     R̄qz .= .-Ψ_qz
     logK̄ .= 0.0
     #= ??? =#
-    # Tikhonov regularisation (smoothing)
+    ## Tikhonov regularisation (smoothing)
     if !isnothing(reg)
         (;nsm, Tmp) = reg
         Tmp .= logK̄; smooth!(logK̄, Tmp, nthread, nblock; nsm)
@@ -159,9 +185,12 @@ function ∇loss!(logK̄, logK, fwd_params, adj_params, loss_params; reg=nothing
     return
 end
 
+md"""
+Main script
+"""
 @views function main()
-    CUDA.device!(0) # select your GPU
-    # physics
+    ## CUDA.device!(0) # select your GPU
+    ## physics
     lx, lz  = 2.0, 1.0 # domain extend
     k0_μ    = 1.0      # background permeability / fluid viscosity
     kb_μ    = 1e-6     # barrier permeability / fluid viscosity
@@ -169,10 +198,10 @@ end
     b_w     = 0.02lx   # barrier width
     b_b     = 0.3lz    # barrier bottom location
     b_t     = 0.8lz    # barrier top location
-    # observations
+    ## observations
     xobs_rng = LinRange(-lx / 6, lx / 6, 8)
     zobs_rng = LinRange(0.25lz, 0.85lz , 8)
-    # numerics
+    ## numerics
     nz       = 255
     nx       = ceil(Int, (nz + 1) * lx / lz) - 1
     nthread  = (16, 16)
@@ -183,17 +212,17 @@ end
     ncheck   = 2nx
     re       = 0.8π # fwd re
     st       = ceil(Int, nx / 30)
-    # GD params
+    ## GD params
     ngd      = 50
     Δγ       = 0.2
-    # preprocessing
+    ## preprocessing
     re_a     = 2re  # adjoint re
     dx, dz   = lx / nx, lz / nz
     xc, zc   = LinRange(-lx / 2 + dx / 2, lx / 2 - dx / 2, nx), LinRange(dz / 2, lz - dz / 2, nz)
     vdτ      = cfl * min(dx, dz)
     ixobs    = floor.(Int, (xobs_rng .- xc[1]) ./ dx) .+ 1
     izobs    = floor.(Int, (zobs_rng .- zc[1]) ./ dz) .+ 1
-    # init
+    ## init
     Pf       = CUDA.zeros(Float64, nx, nz)
     RPf      = CUDA.zeros(Float64, nx, nz)
     qx       = CUDA.zeros(Float64, nx + 1, nz)
@@ -204,7 +233,7 @@ end
     K        = k0_μ .* CUDA.ones(Float64, nx, nz)
     logK     = CUDA.zeros(Float64, nx, nz)
     Tmp      = CUDA.zeros(Float64, nx, nz)
-    # init adjoint storage
+    ## init adjoint storage
     Ψ_qx     = CUDA.zeros(Float64, nx + 1, nz)
     q̄x       = CUDA.zeros(Float64, nx + 1, nz)
     R̄qx      = CUDA.zeros(Float64, nx + 1, nz)
@@ -216,15 +245,15 @@ end
     R̄Pf      = CUDA.zeros(Float64, nx, nz)
     ∂J_∂Pf   = CUDA.zeros(Float64, nx, nz)
     dJ_dlogK = CUDA.zeros(Float64, nx, nz)
-    # set low permeability barrier location
+    ## set low permeability barrier location
     K[ceil(Int, (lx/2-b_w)/dx):ceil(Int, (lx/2+b_w)/dx), ceil(Int, b_b/dz):ceil(Int, b_t/dz)] .= kb_μ
     logK .= log.(K)
     K_max = copy(K)
-    # set wells location
+    ## set wells location
     x_iw, x_ew, z_w = ceil.(Int, (lx / 5 / dx, 4lx / 5 / dx, 0.45lz / dz))
     Qf[x_iw:x_iw, z_w:z_w] .=  Q_in / dx / dz # injection
     Qf[x_ew:x_ew, z_w:z_w] .= -Q_in / dx / dz # extraction
-    # init visu
+    ## init visu
     iters_evo = Float64[]; errs_evo = Float64[]
     qM, qx_c, qz_c = zeros(nx, nz), zeros(nx, nz), zeros(nx, nz)
     fig = Figure(resolution=(2500, 1200), fontsize=32)
@@ -241,7 +270,7 @@ end
     Colorbar(fig[1, 1][1, 2], plt.fld.Pf)
     Colorbar(fig[1, 2][1, 2], plt.fld.K)
     Colorbar(fig[2, 1][1, 2], plt.fld.qM)
-    # action
+    ## action
     fwd_params = (
         fields      = (;Pf, qx, qz, Qf, RPf, Rqx, Rqz, K),
         scalars     = (;nx, nz, dx, dz, nthread, nblock),
@@ -250,7 +279,7 @@ end
     fwd_visu = (;qx_c, qz_c, qM, fig, plt, st)
     @info "Synthetic solve"
     #= ??? =#
-    # store true data
+    ## store true data
     Pf_obs = copy(Pf[ixobs, izobs])
     adj_params = (
         fields  = (;P̄f, q̄x, q̄z, R̄Pf, R̄qx, R̄qz, Ψ_qx, Ψ_qz, Ψ_Pf),
@@ -261,27 +290,27 @@ end
         scalars = (;ixobs, izobs),
     )
     reg = (;nsm=20, Tmp)
-    # loss functions
+    ## loss functions
     J(_logK) = loss(_logK, fwd_params, loss_params)
     ∇J!(_logK̄, _logK) = ∇loss!(_logK̄, _logK, fwd_params, adj_params, loss_params; reg)
     @info "Inversion for K"
-    # initial guess
+    ## initial guess
     K    .= k0_μ
     logK .= log.(K)
     @info "Gradient descent - inversion for K"
     cost_evo = Float64[]
     for igd in 1:ngd
         printstyled("> GD iter $igd \n"; bold=true, color=:green)
-        # evaluate gradient of the cost function
+        ## evaluate gradient of the cost function
         #= ??? =#
-        # update logK
+        ## update logK
         γ = Δγ / maximum(abs.(dJ_dlogK))
         @. logK -= #= ??? =#
         @printf "  min(K) = %1.2e \n" minimum(K)
-        # loss
+        ## loss
         push!(cost_evo, J(logK))
         @printf "  --> Loss J = %1.2e (γ = %1.2e)\n" last(cost_evo)/first(cost_evo) γ
-        # visu
+        ## visu
         qx_c .= Array(avx(qx)); qz_c .= Array(avz(qz)); qM .= sqrt.(qx_c.^2 .+ qz_c.^2)
         qx_c ./= qM; qz_c ./= qM
         plt.fld.Pf[3] = Array(Pf)
@@ -295,4 +324,7 @@ end
     return
 end
 
+md"""
+Executing the main script
+"""
 main()

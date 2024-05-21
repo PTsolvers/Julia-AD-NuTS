@@ -1,8 +1,17 @@
+using Markdown
+md"""
+# Solution: Geothermal 2D on GPUs using kernel programming and AD for sensitivity analysis
+
+Load modules
+"""
 using Printf
 using CairoMakie
 using CUDA
 using Enzyme
 
+md"""
+Averaging and local maximum macros and functions
+"""
 macro d_xa(A) esc(:($A[ix+1, iz] - $A[ix, iz])) end
 macro d_za(A) esc(:($A[ix, iz+1] - $A[ix, iz])) end
 macro avx(A)  esc(:(0.5 * ($A[ix, iz] + $A[ix+1, iz]))) end
@@ -12,7 +21,9 @@ macro avz(A)  esc(:(0.5 * ($A[ix, iz] + $A[ix, iz+1]))) end
 @views maxloc(A) = max.(A[2:end-1, 2:end-1], max.(max.(A[1:end-2, 2:end-1], A[3:end, 2:end-1]),
                                                   max.(A[2:end-1, 1:end-2], A[2:end-1, 3:end])))
 
-# forward
+md"""
+Forward kernels
+"""
 function residual_fluxes!(Rqx, Rqz, qx, qz, Pf, K, dx, dz)
     ix = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     iz = (blockIdx().y - 1) * blockDim().y + threadIdx().y
@@ -42,9 +53,10 @@ function update_pressure!(Pf, RPf, K_max, vdτ, lz, re)
     @inbounds if (ix<=size(Pf, 1) && iz<=size(Pf, 2)) Pf[ix, iz] -= RPf[ix, iz] * (vdτ * lz / re) / K_max[ix, iz] end
     return
 end
-# forward
 
-# adjoint
+md"""
+Adjoint kernels
+"""
 function ∇_residual_fluxes!(Rqx, R̄qx, Rqz, R̄qz, qx, q̄x, qz, q̄z, Pf, P̄f, K, dx, dz)
     Enzyme.autodiff_deferred(Enzyme.Reverse, residual_fluxes!, DuplicatedNoNeed(Rqx, R̄qx), DuplicatedNoNeed(Rqz, R̄qz), DuplicatedNoNeed(qx, q̄x), DuplicatedNoNeed(qz, q̄z), DuplicatedNoNeed(Pf, P̄f), Const(K), Const(dx), Const(dz))
     return
@@ -54,18 +66,21 @@ function ∇_residual_pressure!(RPf, R̄Pf, qx, q̄x, qz, q̄z, Qf, dx, dz)
     Enzyme.autodiff_deferred(Enzyme.Reverse, residual_pressure!, DuplicatedNoNeed(RPf, R̄Pf), DuplicatedNoNeed(qx, q̄x), DuplicatedNoNeed(qz, q̄z), Const(Qf), Const(dx), Const(dz))
     return
 end
-# adjoint
 
-# sensitivity
+md"""
+Sensitivity kernel
+"""
 function ∇_residual_fluxes_s!(Rqx, R̄qx, Rqz, R̄qz, qx, qz, Pf, K, K̄, dx, dz)
     Enzyme.autodiff_deferred(Enzyme.Reverse, residual_fluxes!, DuplicatedNoNeed(Rqx, R̄qx), DuplicatedNoNeed(Rqz, R̄qz), Const(qx), Const(qz), Const(Pf), DuplicatedNoNeed(K, K̄), Const(dx), Const(dz))
     return
 end
-# sensitivity
 
+md"""
+Main script
+"""
 @views function main()
-    CUDA.device!(0) # select your GPU
-    # physics
+    ## CUDA.device!(0) # select your GPU
+    ## physics
     lx, lz  = 2.0, 1.0 # domain extend
     k0_μ    = 1.0      # background permeability / fluid viscosity
     kb_μ    = 1e-6     # barrier permeability / fluid viscosity
@@ -73,7 +88,7 @@ end
     b_w     = 0.02lx   # barrier width
     b_b     = 0.3lz    # barrier bottom location
     b_t     = 0.8lz    # barrier top location
-    # numerics
+    ## numerics
     nz      = 255
     nx      = ceil(Int, (nz + 1) * lx / lz) - 1
     nthread = (16, 16)
@@ -84,12 +99,12 @@ end
     ncheck  = 2nx
     re      = 0.8π # fwd re
     st      = ceil(Int, nx / 30)
-    # preprocessing
+    ## preprocessing
     re_a    = 2re  # adjoint re
     dx, dz  = lx / nx, lz / nz
     xc, zc  = LinRange(-lx / 2 + dx / 2, lx / 2 - dx / 2, nx), LinRange(dz / 2, lz - dz / 2, nz)
     vdτ     = cfl * min(dx, dz)
-    # init
+    ## init
     Pf      = CUDA.zeros(Float64, nx, nz)
     RPf     = CUDA.zeros(Float64, nx, nz)
     qx      = CUDA.zeros(Float64, nx + 1, nz)
@@ -98,13 +113,13 @@ end
     Rqz     = CUDA.zeros(Float64, nx, nz + 1)
     Qf      = CUDA.zeros(Float64, nx, nz)
     K       = k0_μ .* CUDA.ones(Float64, nx, nz)
-    # set low permeability barrier location
+    ## set low permeability barrier location
     K[ceil(Int, (lx/2-b_w)/dx):ceil(Int, (lx/2+b_w)/dx), ceil(Int, b_b/dz):ceil(Int, b_t/dz)] .= kb_μ # low permeability barrier location
-    # set wells location
+    ## set wells location
     x_iw, x_ew, z_w = ceil.(Int, (lx / 5 / dx, 4lx / 5 / dx, 0.45lz / dz)) # well location
     Qf[x_iw:x_iw, z_w:z_w] .=  Q_in / dx / dz # injection
     Qf[x_ew:x_ew, z_w:z_w] .= -Q_in / dx / dz # extraction
-    # init visu
+    ## init visu
     iters_evo = Float64[]; errs_evo = Float64[]
     qM, qx_c, qz_c = zeros(nx, nz), zeros(nx, nz), zeros(nx, nz)
     fig = Figure(resolution=(2500, 1200), fontsize=32)
@@ -120,11 +135,11 @@ end
     Colorbar(fig[1, 1][1, 2], plt.fld.Pf)
     Colorbar(fig[1, 2][1, 2], plt.fld.K)
     Colorbar(fig[2, 1][1, 2], plt.fld.qM)
-    # action
+    ## action
     @info "Forward solve"
-    # approximate diagonal (Jacobi) preconditioner
+    ## approximate diagonal (Jacobi) preconditioner
     K_max = copy(K); K_max[2:end-1, 2:end-1] .= maxloc(K); K_max[:, [1, end]] .= K_max[:, [2, end-1]]
-    # iterative loop
+    ## iterative loop
     err = 2ϵtol; iter = 1
     while err >= ϵtol && iter <= maxiter
         CUDA.@sync @cuda threads=nthread blocks=nblock residual_fluxes!(Rqx, Rqz, qx, qz, Pf, K, dx, dz)
@@ -134,7 +149,7 @@ end
         if iter % ncheck == 0
             err = maximum(abs.(RPf))
             push!(iters_evo, iter/nx); push!(errs_evo, err)
-            # visu
+            ## visu
             qx_c .= Array(avx(qx)); qz_c .= Array(avz(qz)); qM .= sqrt.(qx_c.^2 .+ qz_c.^2)
             qx_c ./= qM; qz_c ./= qM
             plt.fld.Pf[3] = Array(Pf)
@@ -149,7 +164,7 @@ end
         iter += 1
     end
     @info "Adjoint solve"
-    # init adjoint storage
+    ## init adjoint storage
     Ψ_qx = CUDA.zeros(Float64, nx + 1, nz)
     q̄x   = CUDA.zeros(Float64, nx + 1, nz)
     R̄qx  = CUDA.zeros(Float64, nx + 1, nz)
@@ -159,7 +174,7 @@ end
     Ψ_Pf = CUDA.zeros(Float64, nx, nz)
     P̄f   = CUDA.zeros(Float64, nx, nz)
     R̄Pf  = CUDA.zeros(Float64, nx, nz)
-    # iterative loop
+    ## iterative loop
     iters_evo = Float64[]; errs_evo = Float64[]
     err = 2ϵtol; iter = 1
     while err >= ϵtol && iter <= maxiter
@@ -177,7 +192,7 @@ end
         if iter % ncheck == 0
             err = maximum(abs.(P̄f))
             push!(iters_evo, iter/nx); push!(errs_evo, err)
-            # visu
+            ## visu
             qx_c .= Array(avx(Ψ_qx)); qz_c .= Array(avz(Ψ_qz)); qM .= sqrt.(qx_c.^2 .+ qz_c.^2)
             qx_c ./= qM; qz_c ./= qM
             plt.fld.Pf[3] = Array(Ψ_Pf)
@@ -191,17 +206,20 @@ end
         end
         iter += 1
     end
-    # evaluate sensitivity
+    ## evaluate sensitivity
     @info "Sensitivity analysis"
     K̄ = CUDA.zeros(Float64, nx, nz)
     R̄qx .= .-Ψ_qx
     R̄qz .= .-Ψ_qz
     CUDA.@sync @cuda threads=nthread blocks=nblock ∇_residual_fluxes_s!(Rqx, R̄qx, Rqz, R̄qz, qx, qz, Pf, K, K̄, dx, dz)
-    # visu
+    ## visu
     K̄ ./= maximum(K̄)
     plt.fld[3][3] = Array(K̄)[2:end-1, 2:end-1]
     display(fig)
     return
 end
 
+md"""
+Executing the main script
+"""
 main()
