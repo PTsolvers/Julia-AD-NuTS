@@ -70,3 +70,5 @@ To start the GLiCID Jupyter Hub, you should use the credentials you received in 
 If all went smooth, you should be able to see and execute the [notebooks/visu_2D.ipynb](notebooks/visu_2D.ipynb) notebook which will produce this figure:
 
 ![out visu](docs/out_visu_2D.png)
+
+> Note: The Jupyter notebooks are generated automatically using [Literate.jl](https://github.com/fredrikekre/Literate.jl)-powered literate programming in Julia upon running the [deploy_notebooks.jl](deploy_notebooks.jl) script.
