@@ -46,7 +46,7 @@ The goal of this workshop is to develop a fast iterative GPU-based solver for el
 2. Invert for the subsurface permeability having a sparse array of fluid pressure observations
 
 <p align="center">
-  <video width="70%" autoplay loop controls src="docs/anim.mp4"/>
+  <video autoplay loop controls src="https://github.com/PTsolvers/Julia-AD-NuTS/assets/61313342/0069ecfb-d706-413b-b78e-dd84efc1b954" width="70%"/>
 </p>
 
 We will not use any "black-box" tooling but rather try to develop concise and performant codes (300 lines of code, max) that execute on graphics processing units (GPUs). We will also use automatic differentiation (AD) capabilities and the differentiable Julia language to automatise the calculation of the adjoint solutions in the gradient-based inversion procedure.
