@@ -45,6 +45,10 @@ The goal of this workshop is to develop a fast iterative GPU-based solver for el
 1. Solve a steady state subsurface flow problem (geothermal operations, injection and extraction of fluids)
 2. Invert for the subsurface permeability having a sparse array of fluid pressure observations
 
+<center>
+  <video width="70%" autoplay loop controls src="docs/anim.mp4"/>
+</center>
+
 We will not use any "black-box" tooling but rather try to develop concise and performant codes (300 lines of code, max) that execute on graphics processing units (GPUs). We will also use automatic differentiation (AD) capabilities and the differentiable Julia language to automatise the calculation of the adjoint solutions in the gradient-based inversion procedure.
 
 The main Julia packages we will rely on are:
@@ -69,6 +73,8 @@ To start the GLiCID Jupyter Hub, you should use the credentials you received in 
 
 If all went smooth, you should be able to see and execute the [notebooks/visu_2D.ipynb](notebooks/visu_2D.ipynb) notebook which will produce this figure:
 
-![out visu](docs/out_visu_2D.png)
+<center>
+  <img src="docs/out_visu_2D.png" alt="out visu" width="70%"/>
+</center>
 
 > :bulb: **Deploy-note:** The Jupyter notebooks are generated automatically using [Literate.jl](https://github.com/fredrikekre/Literate.jl)-powered literate programming in Julia upon running `using Pkg; Pkg.add("Literate")` and then the [deploy_notebooks.jl](deploy_notebooks.jl) script.

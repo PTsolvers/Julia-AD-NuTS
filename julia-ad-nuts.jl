@@ -424,11 +424,11 @@ Let's start with a simple example:
 
 using Enzyme
 
-f(ω,x) = sin(ω*x)
+f(ω, x) = sin(ω * x)
 
-∇f(ω,x) = Enzyme.autodiff(Reverse,f,Active,Const(ω),Active(x))[1][2]
+∇f(ω, x) = Enzyme.autodiff(Reverse, f, Active, Const(ω), Active(x))[1][2]
 
-@assert ∇f(π,1.0) ≈ π*cos(π)
+@assert ∇f(π, 1.0) ≈ π * cos(π)
 
 md"""
 In this line: `∇f(x) = Enzyme.autodiff(Reverse,f,Active,Active(x))[1][1]`, we call `Enzyme.autodiff` function, which computes the partial derivatives. We pass `Reverse` as a first argument, which means that we use the reverse mode of accumulation (see below). We mark the arguments as either `Const` or `Active` to specify which partial derivatives are computed.
