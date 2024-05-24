@@ -78,3 +78,5 @@ If all went smooth, you should be able to see and execute the [notebooks/visu_2D
 </p>
 
 > :bulb: **Deploy-note:** The Jupyter notebooks are generated automatically using [Literate.jl](https://github.com/fredrikekre/Literate.jl)-powered literate programming in Julia upon running `using Pkg; Pkg.add("Literate")` and then the [deploy_notebooks.jl](deploy_notebooks.jl) script.
+
+> ⚠️ Current `ipynb` will fail on plotting if run in VS code native notebook env because of unsupported `IJulia.clear_output(true)`.
