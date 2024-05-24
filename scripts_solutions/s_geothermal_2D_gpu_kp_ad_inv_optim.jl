@@ -110,6 +110,7 @@ Forward solver
                 plt.fld.ar[3] = qx_c[1:st:end, 1:st:end]
                 plt.fld.ar[4] = qz_c[1:st:end, 1:st:end]
                 plt.err[1] = Point2.(iters_evo, errs_evo)
+#nb                 IJulia.clear_output(true)
                 display(fig)
             end
         end
@@ -341,6 +342,7 @@ Main script
     plt.fld.ar[3] = qx_c[1:st:end, 1:st:end]
     plt.fld.ar[4] = qz_c[1:st:end, 1:st:end]
     plt.err[1] = Point2.(iters_evo, errs_evo)
+#nb     IJulia.clear_output(true)
     display(fig)
     return
 end

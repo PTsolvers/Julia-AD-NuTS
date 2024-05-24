@@ -146,6 +146,7 @@ Main script
             plt.fld.ar[3] = qx_c[1:st:end, 1:st:end]
             plt.fld.ar[4] = qz_c[1:st:end, 1:st:end]
             plt.err[1] = Point2.(iters_evo, errs_evo)
+#nb             IJulia.clear_output(true)
             display(fig)
             @printf("  #iter/nx=%.1f, max(err)=%1.3e\n", iter/nx, err)
         end
@@ -189,6 +190,7 @@ Main script
             plt.fld.ar[3] = qx_c[1:st:end, 1:st:end]
             plt.fld.ar[4] = qz_c[1:st:end, 1:st:end]
             plt.err[1] = Point2.(iters_evo, errs_evo)
+#nb             IJulia.clear_output(true)
             display(fig)
             @printf("  #iter/nx=%.1f, max(err)=%1.6e\n", iter/nx, err)
         end
@@ -203,6 +205,7 @@ Main script
     ## visu
     K̄ ./= maximum(K̄)
     plt.fld[3][3] = Array(K̄)[2:end-1, 2:end-1]
+#nb     IJulia.clear_output(true)
     display(fig)
     return
 end
