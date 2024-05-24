@@ -43,7 +43,7 @@ md"""
 Performance test "lab"
 """
 function perftest()
-    nx = ny = 512 * 64
+    nx = ny = 512 * 32 # 512 * 64
     C  = CUDA.rand(Float64, nx, ny)
     D  = CUDA.rand(Float64, nx, ny)
     _dx = _dy = dt = rand()
@@ -61,7 +61,7 @@ function perftest()
     end
     T_eff = (2 * 1 + 1) / 1e9 * nx * ny * sizeof(Float64) / t_it
     println("T_eff = $(round(T_eff, sigdigits=6)) GiB/s (T_peak = $(round(T_peak, sigdigits=6)) GiB/s) using CUDA.jl on an Nvidia GPU")
-    println("So that's cool. We are getting close to hardware limit, running at $(round(T_eff/T_peak*100, sigdigits=4)) % of memory copy! 🚀")
+    println("So that's cool. We are running at $(round(T_eff/T_peak*100, sigdigits=4)) % of memory copy (T_peak)! 🚀")
     return
 end
 
