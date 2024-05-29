@@ -16,7 +16,7 @@ Today, we will develop code that:
 
 Too good to be true? Hold on 🙂 ...
 
-### Why to still bother with GPU computing in 2023
+### Why to still bother with GPU computing in 2024
 - It's around for more than a decade
 - It shows massive performance gain compared to serial CPU computing
 - First exascale supercomputer, Frontier, is full of GPUs
@@ -41,7 +41,7 @@ Floating point operations are "for free" when we work in memory-bounded regimes.
 
 👉 Requires to re-think the numerical implementation and solution strategies
 
-Unfortunately, the cost of evaluating a first derivative $∂A / ∂x$ using finite-differences:
+Unfortunately, the cost of evaluating a first derivative $∂A / ∂x$ in, e.g., diffusive flux calculations using finite-differences:
 
 `q[ix] = -D * (A[ix+1] - A[ix]) / dx`
 
@@ -60,7 +60,7 @@ $$ ∇⋅(D ∇ C) = \frac{∂C}{∂t} $$
 
 👉 Let's test the performance using a simple [perftest.ipynb](notebooks/perftest.ipynb) script.
 
-### Why to still bother with GPU computing in 2023
+### Why to still bother with GPU computing in 2024
 Because it is still challenging. Why?
 - Very few codes use it efficiently.
 - It requires to rethink the solving strategy as non-local operations will kill the fun.
