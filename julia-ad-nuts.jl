@@ -1,7 +1,9 @@
 md"""
 # HPC in geosciences and adjoint-based optimisation with Julia on GPUs
 
-## Some intro workds about Julia for HPC
+You can find the original content of the workshop at [https://github.com/PTsolvers/Julia-AD-NuTS](https://github.com/PTsolvers/Julia-AD-NuTS)
+
+## Some intro words about Julia for HPC
 
 Some words on the Julia at scale effort, the Julia HPC packages, and the overall Julia for HPC motivation (two language barrier)
 
