@@ -1,3 +1,6 @@
+#src # This is needed to make this run as normal Julia file
+using Markdown #src
+
 md"""
 # Geothermal 2D on GPU using array programming
 

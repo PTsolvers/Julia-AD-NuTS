@@ -1,4 +1,6 @@
-using Markdown
+#src # This is needed to make this run as normal Julia file
+using Markdown #src
+
 md"""
 # Solution: Geothermal 2D on CPUs using "kernel" programming
 

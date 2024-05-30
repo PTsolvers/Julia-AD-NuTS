@@ -75,7 +75,7 @@ Despite looking simple, this problem presents several challenges to be solved ef
 - handle source terms
 - handle spatially variable material parameters
 
-> :bulb: For practical purposes, we will work in 2D, however everything we will develop today is readily extensible to 3D.
+> 💡 For practical purposes, we will work in 2D, however everything we will develop today is readily extensible to 3D.
 
 The corresponding system of equation reads:
 
@@ -222,7 +222,7 @@ The GPU version of the compute function, `compute_fun_d`, will be executed by ea
 
 ![staggrid](docs/cuda_grid.png)
 
-> :bulb: Playing with GPUs - the rules
+> 💡 Playing with GPUs - the rules
 >
 > - Current GPUs allow typically a maximum of 1024 threads per block.
 > - The maximum number of blocks allowed is huge; computing the largest possible array on the GPU will make you run out of device memory (currently 16-80 GB) before hitting the maximal number of blocks when selecting sensible kernel launch parameters (usually threads per block >= 256).
@@ -239,7 +239,7 @@ and add the following parameters for a GPU kernel launch:
 ```julia
 CUDA.@sync @cuda threads=nthread blocks=nblock compute_fun_d!(A, A2)
 ```
-Yay :tada:, if you made it here then we are ready to use our efficient GPU-based forward model for optimisation problem.
+Yay 🎉, if you made it here then we are ready to use our efficient GPU-based forward model for optimisation problem.
 """
 
 md"""
@@ -248,7 +248,7 @@ md"""
 In the previous session, we have learned how to compute the fluid pressure and fluxes in the computational domain with a given permeability distribution. In many practical applications the properties of the subsurface, such as the permeability, are unknown or poorly constrained, and the direct measurements are very sparse as they would require extracting the rock samples and performing laboratory experiments. In many cases, the _outputs_ of the simulation, i.e. the pressure and the fluxes, can be measured in the field at much higher spatial and temporal resolution. Therefore, it is useful to be able to determine such a distribution of the properties of the subsurface, that the modelled pressures and fluxes match the observations as close as possible. The task of finding this distribution is referred to as _the inverse modelling_. In this session, we will design and implement the inverse model for determining the permeability field, using the features of Julia, such as GPU programming and automatic differentiation.
 
 ### Introduction
-> :book: In this section, we explain the basic ideas of the inverse modelling and the adjoint method. The notation used isn't mathematically rigorous, as the purpose of this text is to give a simple and intuitive understanding of the topic. Understanding the derivations isn't strictly necessary for the workshop, but it will help you a lot, especially if you want to modify the code for your own problems.
+> 📖 In this section, we explain the basic ideas of the inverse modelling and the adjoint method. The notation used isn't mathematically rigorous, as the purpose of this text is to give a simple and intuitive understanding of the topic. Understanding the derivations isn't strictly necessary for the workshop, but it will help you a lot, especially if you want to modify the code for your own problems.
 """
 
 md"""
@@ -305,7 +305,7 @@ $$
 
 In this expression, some of the terms are easy to compute. If the cost function is defined as a square of the difference between the modelled solution and observed values (see above), then $\partial J / \partial\mathcal{L} = \mathcal{L} - \mathcal{L}_\mathrm{obs}$, and $\partial J / \partial K = 0$. The tricky term is the derivative $\mathrm{d}\mathcal{L}/\mathrm{d}K$ of the solution w.r.t. the permeability.
 
-> :warning: In this section we use the standard notation for partial and total derivatives. This is correct for the finite-dimensional analysis, i.e. for discretised versions of the equations. However, in the continuous case, the derivatives are the functional derivatives, and a more correct term for the objective function would be the "objective functional" since it acts on functions. In the workshop, we'll only work with the discretised form of equations, so we use the familiar notation to keep the explanation simple.
+> ⚠ In this section we use the standard notation for partial and total derivatives. This is correct for the finite-dimensional analysis, i.e. for discretised versions of the equations. However, in the continuous case, the derivatives are the functional derivatives, and a more correct term for the objective function would be the "objective functional" since it acts on functions. In the workshop, we'll only work with the discretised form of equations, so we use the familiar notation to keep the explanation simple.
 
 Note that the solution $\mathcal{L}$ is a vector containing the fluxes $\boldsymbol{q}$ and the pressure $P_f$:
 
@@ -369,7 +369,8 @@ $$
 \end{align*}
 $$
 
-Phew, there is a lot to process :sweat_smile:! We now established a very efficient way of computing point-wise gradients of the objective function. Now, we only need to figure out how to solve the adjoint equation (3).
+
+Phew, there is a lot to process 😅! We now established a very efficient way of computing point-wise gradients of the objective function. Now, we only need to figure out how to solve the adjoint equation (3).
 
 ### Pseudo-transient adjoint solver
 In the same way that we solve the steady-state forward problem by integrating the equations given by residual $R$ in pseudo-time, we can augment the system (3) with the pseudo-time derivatives of the adjoint variables $\Psi_{\boldsymbol{q}}$ and $\Psi_{P_f}$:
@@ -397,7 +398,7 @@ $$
 
 With this approach, we never need to explicitly store the matrix of the adjoint problem. Instead, we only need to evaluate the product of this matrix and the adjoint variables at the current iteration in pseudo-time. It is very similar to just computing the residuals of the current forward solution.
 
-> :book: Note that the matrix in the adjoint equaiton is actually the transposed Jacobian matrix of the forward problem. Evaluating the product of the Jacobian matrix and a vector is a very common operation in computing, and this product is commonly abbreviated as JVP (_Jacobian-vector product_). Computing the product of the tranposed Jacobian matrix and a column vector is equivalent to the product of the row vector and the same Jacobian. Therefore, it is termed VPJ(_vector-Jacobian product_).
+> 📖 Note that the matrix in the adjoint equaiton is actually the transposed Jacobian matrix of the forward problem. Evaluating the product of the Jacobian matrix and a vector is a very common operation in computing, and this product is commonly abbreviated as JVP (_Jacobian-vector product_). Computing the product of the tranposed Jacobian matrix and a column vector is equivalent to the product of the row vector and the same Jacobian. Therefore, it is termed VPJ(_vector-Jacobian product_).
 
 To solve the adjoint problem, we need to evaluate the JVPs given the residuals for the forward problem. It is possible to do that either analytically, which involves manual derivation for the transposed Jacobian for every particular system of equations, or numerically in an automated way, using the _automatic differentiation_.
 """
@@ -406,7 +407,7 @@ md"""
 ### Automatic differentiation
 [Automatic differentiation](https://en.wikipedia.org/wiki/Automatic_differentiation) (AD) allows evaluating the gradients of functions specified by code. Using AD, the partial derivatives are evaluated by repeatedly applying the chain rule of differentiation to the sequence of elementary arithmetic operations constituting a computer program.
 
-> :bulb: Many constructs in computer programs aren't differentiable, for example, I/O calls or system calls. AD tools must handle such cases.
+> 💡 Many constructs in computer programs aren't differentiable, for example, I/O calls or system calls. AD tools must handle such cases.
 
 Automatic differentiation is a key ingredient of [_differentiable programming_](https://en.wikipedia.org/wiki/Differentiable_programming), a programming paradigm enabling gradient-based optimisation of the parameters of an arbitrary computer program.
 
@@ -419,7 +420,7 @@ One of the main building blocks in many optimization algorithms involves computi
 
 Let's familiarise with [Enzyme.jl](https://enzyme.mit.edu/julia/stable/), the Julia package for performing AD.
 
-> :bulb: There are many other Julia packages for performing AD, e.g., [Zygote.jl](https://fluxml.ai/Zygote.jl/stable/). In this tutorial, we use Enzyme as it supports some features currently missing in other packages, e.g., differentiating mutating functions and GPU kernels.
+> 💡 There are many other Julia packages for performing AD, e.g., [Zygote.jl](https://fluxml.ai/Zygote.jl/stable/). In this tutorial, we use Enzyme as it supports some features currently missing in other packages, e.g., differentiating mutating functions and GPU kernels.
 
 Let's start with a simple example:
 """
@@ -435,7 +436,7 @@ f(ω, x) = sin(ω * x)
 md"""
 In this line: `∇f(x) = Enzyme.autodiff(Reverse,f,Active,Active(x))[1][1]`, we call `Enzyme.autodiff` function, which computes the partial derivatives. We pass `Reverse` as a first argument, which means that we use the reverse mode of accumulation (see below). We mark the arguments as either `Const` or `Active` to specify which partial derivatives are computed.
 
-Now we know how to solve the adjoint equation using VJPs, and are familiar with Enzyme.jl. Let's begin the hands-on activity! :rocket:
+Now we know how to solve the adjoint equation using VJPs, and are familiar with Enzyme.jl. Let's begin the hands-on activity! 🚀
 
 ## Hands-on II
 In this section, we will implement the gradient-based inversion algorithm for the permeability of the subsurface. In the first session we used the model setup involving a permeability barrier in the center of the computational domain. Now, we will try reconstruct this permeability barrier knowing only the "observed" values of the pressure.
@@ -482,7 +483,7 @@ In the [reverse mode](https://enzyme.mit.edu/julia/stable/generated/autodiff/#Re
 
 Implement a similar function for computing the derivatives of the pressure residual `∇_residual_pressure!`. In the following, we will also need the partial derivative of the fluxes residuals with respect to permeability $K$. Implement a new function `∇_residual_fluxes_s!`, but mark the variable `K` with the activity `DuplicatedNoNeed`, and variables `qx`, `qz`, and `Pf` as `Const` instead.
 
-:bulb: Feel free to copy your implementation of the forward model into the file [geothermal_2D_gpu_kp_ad_sens.ipynb](notebooks/geothermal_2D_gpu_kp_ad_sens.ipynb)
+💡 Feel free to copy your implementation of the forward model into the file [geothermal_2D_gpu_kp_ad_sens.ipynb](notebooks/geothermal_2D_gpu_kp_ad_sens.ipynb)
 
 #### ✏️ Task 1b: Implement the iterative loop to compute the adjoint solution
 Now, we can start implementing the pseudo-transient loop for the adjoint solution.
@@ -638,7 +639,7 @@ Compared to the sensitivity analysis, the objective function is now has quadrati
 ∂J_∂Pf[ixobs, izobs] .= #= ??? =#
 ```
 
-If in doubt, search the introduction for the answer :smirk:.
+If in doubt, search the introduction for the answer 😏.
 
 Try to execute the functions `loss` and `∇loss!` in the code to make sure your implementation works as expected.
 
@@ -665,7 +666,7 @@ Inside the gradient descent loop, we adaptively compute the step size `γ` in su
 
 Complete the gradient descent loop: compute the loss function gradient using the function `∇J!`, and then update the logarithm of permeability using the computed gradient. Look in the introduction section for help.
 
-Congratulations :tada:, you successfully implemented the full inversion algorithm! Despite being very simple and not robust enough, the algorithm reproduces the approximate location and the shape of the low-permeability barrier.
+Congratulations 🎉, you successfully implemented the full inversion algorithm! Despite being very simple and not robust enough, the algorithm reproduces the approximate location and the shape of the low-permeability barrier.
 
 ## Optional exercises
 
